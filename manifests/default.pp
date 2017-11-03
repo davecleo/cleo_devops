@@ -38,7 +38,6 @@ mysql::db {'harmony':
 }
 
 if $ec2_instance_id {
-  notify{'This is an AWS instance!':}
   wget::fetch { "download harmony":
      source => 'http://www.cleo.com/SoftwareUpdate/harmony/release/jre1.8/InstData/Linux(64-bit)/VM/install.bin',
      destination => '/tmp/install.bin',
@@ -51,8 +50,6 @@ if $ec2_instance_id {
      ensure => 'present',
      notify => Exec["run harmony installer"]
   }
-  notify{'This is NOT an AWS instance!':}
-  # do non-AWS things here
 }
 
 wget::fetch { "download service wrapper":
@@ -79,23 +76,8 @@ exec { "install service":
   require => [ File['/usr/local/bin/cleo-service'], Exec ['run harmony installer']],
 }
 
-/* Fetch the underlying libs needed by VFS */
-$juelfiles = [
-    'http://central.maven.org/maven2/de/odysseus/juel/juel-api/2.2.7/juel-api-2.2.7.jar',
-    'http://central.maven.org/maven2/de/odysseus/juel/juel-impl/2.2.7/juel-impl-2.2.7.jar',
-    'http://central.maven.org/maven2/de/odysseus/juel/juel-spi/2.2.7/juel-spi-2.2.7.jar',
-    'http://central.maven.org/maven2/org/yaml/snakeyaml/1.15/snakeyaml-1.15.jar'
-]
-
-wget::fetch { $juelfiles :
-    destination => "${harmony_dir}/lib/uri/",
-    require => Exec['run harmony installer']
-}
-
-/* We need to copy the vfs libray into the right place */
-/* we'll also use this task to create trust and unify repos and generate entropy */
-exec { "copy_vfs_lib":
-    command => "cp /vagrant/uri-vfs* ${harmony_dir}/lib/uri; mkdir -p ${harmony_dir}/repos/unify; mkdir -p ${harmony_dir}/repos/unify_over; mkdir -p ${harmony_dir}/repos/trust; mkdir -p ${harmony_dir}/repos/trust_over; rngd -r /dev/urandom",
+exec { "make_unify_repos":
+    command => "mkdir -p ${harmony_dir}/repos/unify; mkdir -p ${harmony_dir}/repos/unify_over; mkdir -p ${harmony_dir}/repos/trust; mkdir -p ${harmony_dir}/repos/trust_over; rngd -r /dev/urandom",
     path    => "/usr/bin/:/bin/:/usr/sbin",
     require => [ Exec['run harmony installer'],
                  Package['rng-tools']
